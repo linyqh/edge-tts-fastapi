@@ -1,0 +1,562 @@
+{
+  "languages": [
+    {
+      "language": "العربية",
+      "english_name": "Arabic (Israel)",
+      "chinese_name": "阿拉伯语（以色列）",
+      "code": "ar_IL"
+    },
+    {
+      "language": "العربية",
+      "english_name": "Arabic (Egypt)",
+      "chinese_name": "阿拉伯语（埃及）",
+      "code": "ar_EG"
+    },
+    {
+      "language": "中文",
+      "english_name": "Chinese Simplified",
+      "chinese_name": "中文简体",
+      "code": "zh_CN"
+    },
+    {
+      "language": "中文",
+      "english_name": "Chinese Tradition",
+      "chinese_name": "中文繁体",
+      "code": "zh_TW"
+    },
+    {
+      "language": "中文",
+      "english_name": "Chinese (Hong Kong)",
+      "chinese_name": "中文（香港）",
+      "code": "zh_HK"
+    },
+    {
+      "language": "Nederlands",
+      "english_name": "Dutch (Netherlands)",
+      "chinese_name": "荷兰语",
+      "code": "nl_NL"
+    },
+    {
+      "language": "Nederlands",
+      "english_name": "Dutch (Belgium)",
+      "chinese_name": "荷兰语（比利时）",
+      "code": "nl_BE"
+    },
+    {
+      "language": "English",
+      "english_name": "English (United States)",
+      "chinese_name": "英语（美国）",
+      "code": "en_US"
+    },
+    {
+      "language": "English",
+      "english_name": "English (Australia)",
+      "chinese_name": "英语（澳大利亚）",
+      "code": "en_AU"
+    },
+    {
+      "language": "English",
+      "english_name": "English (Canada)",
+      "chinese_name": "英语（加拿大）",
+      "code": "en_CA"
+    },
+    {
+      "language": "English",
+      "english_name": "English (India)",
+      "chinese_name": "英语（印度）",
+      "code": "en_IN"
+    },
+    {
+      "language": "English",
+      "english_name": "English (Ireland)",
+      "chinese_name": "英语（爱尔兰）",
+      "code": "en_IE"
+    },
+    {
+      "language": "English",
+      "english_name": "English (New Zealand)",
+      "chinese_name": "英语（新西兰）",
+      "code": "en_NZ"
+    },
+    {
+      "language": "English",
+      "english_name": "English (Singapore)",
+      "chinese_name": "英语（新加坡）",
+      "code": "en_SG"
+    },
+    {
+      "language": "English",
+      "english_name": "English (South Africa)",
+      "chinese_name": "英语（南非）",
+      "code": "en_ZA"
+    },
+    {
+      "language": "English",
+      "english_name": "English (United Kingdom)",
+      "chinese_name": "英语（英国）",
+      "code": "en_GB"
+    },
+    {
+      "language": "Français",
+      "english_name": "French",
+      "chinese_name": "法语",
+      "code": "fr_FR"
+    },
+    {
+      "language": "Français",
+      "english_name": "French (Belgium)",
+      "chinese_name": "法语（比利时）",
+      "code": "fr_BE"
+    },
+    {
+      "language": "Français",
+      "english_name": "French (Canada)",
+      "chinese_name": "法语（加拿大）",
+      "code": "fr_CA"
+    },
+    {
+      "language": "Français",
+      "english_name": "French (Switzerland)",
+      "chinese_name": "法语（瑞士）",
+      "code": "fr_CH"
+    },
+    {
+      "language": "Deutsch",
+      "english_name": "German",
+      "chinese_name": "德语",
+      "code": "de_DE"
+    },
+    {
+      "language": "Deutsch",
+      "english_name": "German (Liechtenstein)",
+      "chinese_name": "德语（列支敦士登）",
+      "code": "de_LI"
+    },
+    {
+      "language": "Deutsch",
+      "english_name": "German (Austria)",
+      "chinese_name": "德语（奥地利）",
+      "code": "de_AT"
+    },
+    {
+      "language": "Deutsch",
+      "english_name": "German (Switzerland)",
+      "chinese_name": "德语（瑞士）",
+      "code": "de_CH"
+    },
+    {
+      "language": "Italiano",
+      "english_name": "Italian",
+      "chinese_name": "意大利语",
+      "code": "it_IT"
+    },
+    {
+      "language": "Italiano",
+      "english_name": "Italian (Switzerland)",
+      "chinese_name": "意大利语（瑞士）",
+      "code": "it_CH"
+    },
+    {
+      "language": "Protuguês",
+      "english_name": "Portuguese (Brazil)",
+      "chinese_name": "葡萄牙语（巴西）",
+      "code": "pt_BR"
+    },
+    {
+      "language": "Protuguês",
+      "english_name": "Portuguese",
+      "chinese_name": "葡萄牙语",
+      "code": "pt_PT"
+    },
+    {
+      "language": "Español",
+      "english_name": "Spanish",
+      "chinese_name": "西班牙语",
+      "code": "es_ES"
+    },
+    {
+      "language": "Español",
+      "english_name": "Spanish (United States)",
+      "chinese_name": "西班牙语（美国）",
+      "code": "es_US"
+    },
+    {
+      "language": "বাংলা",
+      "english_name": "Bengali",
+      "chinese_name": "孟加拉语",
+      "code": "bn_BD"
+    },
+    {
+      "language": "বাংলা",
+      "english_name": "Bengali (India)",
+      "chinese_name": "孟加拉语（印度）",
+      "code": "bn_IN"
+    },
+    {
+      "language": "hrvatski",
+      "english_name": "Croatian",
+      "chinese_name": "克罗地亚语",
+      "code": "hr_HR"
+    },
+    {
+      "language": "čeština",
+      "english_name": "Czech",
+      "chinese_name": "捷克语",
+      "code": "cs_CZ"
+    },
+    {
+      "language": "Dansk",
+      "english_name": "Danish",
+      "chinese_name": "丹麦语",
+      "code": "da_DK"
+    },
+    {
+      "language": "ελληνικά",
+      "english_name": "Greek",
+      "chinese_name": "希腊语",
+      "code": "el_GR"
+    },
+    {
+      "language": "עברית",
+      "english_name": "Hebrew (Israel)",
+      "chinese_name": "希伯来语（以色列）",
+      "code": "he_IL"
+    },
+    {
+      "language": "עברית",
+      "english_name": "Hebrew (Israel)",
+      "chinese_name": "希伯来语（以色列）",
+      "code": "iw_IL"
+    },
+    {
+      "language": "हिंदी",
+      "english_name": "Hindi",
+      "chinese_name": "印度语",
+      "code": "hi_IN"
+    },
+    {
+      "language": "Magyar",
+      "english_name": "Hungarian",
+      "chinese_name": "匈牙利语",
+      "code": "hu_HU"
+    },
+    {
+      "language": "",
+      "english_name": "Indonesian",
+      "chinese_name": "印度尼西亚语",
+      "code": "in_ID"
+    },
+    {
+      "language": "日本語の言語",
+      "english_name": "Japanese",
+      "chinese_name": "日语",
+      "code": "ja_JP"
+    },
+    {
+      "language": "한국의",
+      "english_name": "Korean",
+      "chinese_name": "韩语（朝鲜语）",
+      "code": "ko_KR"
+    },
+    {
+      "language": "Bahasa Melayu",
+      "english_name": "Malay",
+      "chinese_name": "马来语",
+      "code": "ms_MY"
+    },
+    {
+      "language": "فارسی",
+      "english_name": "Persian",
+      "chinese_name": "波斯语",
+      "code": "fa_IR"
+    },
+    {
+      "language": "Polski",
+      "english_name": "Polish",
+      "chinese_name": "波兰语",
+      "code": "pl_PL"
+    },
+    {
+      "language": "româna",
+      "english_name": "Romanian",
+      "chinese_name": "罗马尼亚语",
+      "code": "ro_RO"
+    },
+    {
+      "language": "Русский",
+      "english_name": "Russian",
+      "chinese_name": "俄罗斯语",
+      "code": "ru_RU"
+    },
+    {
+      "language": "српски",
+      "english_name": "Serbian",
+      "chinese_name": "塞尔维亚语",
+      "code": "sr_RS"
+    },
+    {
+      "language": "Svenska",
+      "english_name": "Swedish",
+      "chinese_name": "瑞典语",
+      "code": "sv_SE"
+    },
+    {
+      "language": "ไทย",
+      "english_name": "Thai",
+      "chinese_name": "泰语",
+      "code": "th_TH"
+    },
+    {
+      "language": "Türkçe",
+      "english_name": "Turkish",
+      "chinese_name": "土耳其语",
+      "code": "tr_TR"
+    },
+    {
+      "language": "اردو",
+      "english_name": "Urdu",
+      "chinese_name": "乌尔都语",
+      "code": "ur_PK"
+    },
+    {
+      "language": "tiếng việt",
+      "english_name": "Vietnamese",
+      "chinese_name": "越南语",
+      "code": "vi_VN"
+    },
+    {
+      "language": "catalá",
+      "english_name": "Catalan (Spain)",
+      "chinese_name": "加泰隆语（西班牙）",
+      "code": "ca_ES"
+    },
+    {
+      "language": "latviešu",
+      "english_name": "Latvian",
+      "chinese_name": "拉脱维亚语",
+      "code": "lv_LV"
+    },
+    {
+      "language": "Lietuvių",
+      "english_name": "Lithuanian",
+      "chinese_name": "立陶宛语",
+      "code": "lt_LT"
+    },
+    {
+      "language": "Norsk bokmal",
+      "english_name": "Norwegian",
+      "chinese_name": "挪威语",
+      "code": "nb_NO"
+    },
+    {
+      "language": "Slovenčina",
+      "english_name": "Slovak",
+      "chinese_name": "斯洛伐克语",
+      "code": "sk_SK"
+    },
+    {
+      "language": "Slovenščina",
+      "english_name": "Slovenian",
+      "chinese_name": "斯洛文尼亚语",
+      "code": "sl_SI"
+    },
+    {
+      "language": "български",
+      "english_name": "Bulgarian",
+      "chinese_name": "保加利亚语",
+      "code": "bg_BG"
+    },
+    {
+      "language": "українська",
+      "english_name": "Ukrainian",
+      "chinese_name": "乌克兰语",
+      "code": "uk_UA"
+    },
+    {
+      "language": "Tagalog",
+      "english_name": "Filipino",
+      "chinese_name": "菲律宾语",
+      "code": "tl_PH"
+    },
+    {
+      "language": "Suomi",
+      "english_name": "Finnish",
+      "chinese_name": "芬兰语",
+      "code": "fi_FI"
+    },
+    {
+      "language": "Afrikaans",
+      "english_name": "Afrikaans",
+      "chinese_name": "南非语",
+      "code": "af_ZA"
+    },
+    {
+      "language": "Rumantsch",
+      "english_name": "Romansh (Switzerland)",
+      "chinese_name": "罗曼什语（瑞士）",
+      "code": "rm_CH"
+    },
+    {
+      "language": "ဗမာ",
+      "english_name": "Burmese (Zawgyi)",
+      "chinese_name": "缅甸语（民间）",
+      "code": "my_ZG"
+    },
+    {
+      "language": "ဗမာ",
+      "english_name": "Burmese (Paduak)",
+      "chinese_name": "缅甸语（官方）",
+      "code": "my_MM"
+    },
+    {
+      "language": "ខ្មែរ",
+      "english_name": "Khmer",
+      "chinese_name": "柬埔寨语",
+      "code": "km_KH"
+    },
+    {
+      "language": "አማርኛ",
+      "english_name": "Amharic (Ethiopia)",
+      "chinese_name": "阿姆哈拉语（埃塞俄比亚）",
+      "code": "am_ET"
+    },
+    {
+      "language": "беларуская",
+      "english_name": "Belarusian",
+      "chinese_name": "白俄罗斯语",
+      "code": "be_BY"
+    },
+    {
+      "language": "eesti",
+      "english_name": "Estonian",
+      "chinese_name": "爱沙尼亚语",
+      "code": "et_EE"
+    },
+    {
+      "language": "Kiswahili",
+      "english_name": "Swahili (Tanzania)",
+      "chinese_name": "斯瓦希里语（坦桑尼亚）",
+      "code": "sw_TZ"
+    },
+    {
+      "language": "isiZulu",
+      "english_name": "Zulu (South Africa)",
+      "chinese_name": "祖鲁语（南非）",
+      "code": "zu_ZA"
+    },
+    {
+      "language": "azərbaycanca",
+      "english_name": "Azerbaijani",
+      "chinese_name": "阿塞拜疆语",
+      "code": "az_AZ"
+    },
+    {
+      "language": "Հայերէն",
+      "english_name": "Armenian (Armenia)",
+      "chinese_name": "亚美尼亚语（亚美尼亚）",
+      "code": "hy_AM"
+    },
+    {
+      "language": "ქართული",
+      "english_name": "Georgian (Georgia)",
+      "chinese_name": "格鲁吉亚语（格鲁吉亚）",
+      "code": "ka_GE"
+    },
+    {
+      "language": "ລາວ",
+      "english_name": "Laotian (Laos)",
+      "chinese_name": "老挝语（老挝）",
+      "code": "lo_LA"
+    },
+    {
+      "language": "Монгол",
+      "english_name": "Mongolian",
+      "chinese_name": "蒙古语",
+      "code": "mn_MN"
+    },
+    {
+      "language": "नेपाली",
+      "english_name": "Nepali",
+      "chinese_name": "尼泊尔语",
+      "code": "ne_NP"
+    },
+    {
+      "language": "қазақ тілі",
+      "english_name": "Kazakh",
+      "chinese_name": "哈萨克语",
+      "code": "kk_KZ"
+    },
+    {
+      "language": "Galego",
+      "english_name": "Galician",
+      "chinese_name": "加利西亚语",
+      "code": "gl_rES"
+    },
+    {
+      "language": "íslenska",
+      "english_name": "Icelandic",
+      "chinese_name": "冰岛语",
+      "code": "is_rIS"
+    },
+    {
+      "language": "ಕನ್ನಡ",
+      "english_name": "Kannada",
+      "chinese_name": "坎纳达语",
+      "code": "kn_rIN"
+    },
+    {
+      "language": "кыргыз тили; قىرعىز تىلى",
+      "english_name": "Kyrgyz",
+      "chinese_name": "吉尔吉斯语",
+      "code": "ky_rKG"
+    },
+    {
+      "language": "മലയാളം",
+      "english_name": "Malayalam",
+      "chinese_name": "马拉亚拉姆语",
+      "code": "ml_rIN"
+    },
+    {
+      "language": "मराठी",
+      "english_name": "Marathi",
+      "chinese_name": "马拉提语/马拉地语",
+      "code": "mr_rIN"
+    },
+    {
+      "language": "தமிழ்",
+      "english_name": "Tamil",
+      "chinese_name": "泰米尔语",
+      "code": "ta_rIN"
+    },
+    {
+      "language": "македонски јазик",
+      "english_name": "Macedonian",
+      "chinese_name": "马其顿语",
+      "code": "mk_rMK"
+    },
+    {
+      "language": "తెలుగు",
+      "english_name": "Telugu",
+      "chinese_name": "泰卢固语",
+      "code": "te_rIN"
+    },
+    {
+      "language": "Ўзбек тили",
+      "english_name": "Uzbek",
+      "chinese_name": "乌兹别克语",
+      "code": "uz_rUZ"
+    },
+    {
+      "language": "Euskara",
+      "english_name": "Basque",
+      "chinese_name": "巴斯克语",
+      "code": "eu_rES"
+    },
+    {
+      "language": "සිංහල",
+      "english_name": "Sinhala (Sri Lanka)",
+      "chinese_name": "僧加罗语（斯里兰卡）",
+      "code": "si_LK"
+    }
+  ]
+}
