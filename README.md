@@ -11,3 +11,13 @@
 - fastapi接收到请求，从代理池中获取一个IP
 - fastapi向 Microsoft API 发送数据
 - 数据返回到客户端
+
+## 安装
+
+1. 克隆仓库
+2. 安装依赖: `pip install -r requirements.txt`
+
+## 运行
+
+```bash
+python -m app.main
