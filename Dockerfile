@@ -28,6 +28,6 @@ COPY . .
 # 获取环境变量 PORT
 EXPOSE 8000
 
-# Command to run the application
+# uvicorn main:app --host 0.0.0.0
 #CMD ["uvicorn", "main:app", "--workers", "2", "--host", "0.0.0.0", "--port", "8000"]
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
