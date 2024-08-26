@@ -3,10 +3,11 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from app import logger
 from app.utils import convert_rate_to_percent
 from app.proxy import get_proxy
-from app.dependencies import get_redis_client
+from app.dependencies import get_redis_client, get_s3_client
 import os
 import uuid
 import redis
+import boto3
 import edge_tts
 
 router = APIRouter()
@@ -55,7 +56,17 @@ async def tts_endpoint(
 TASK_PREFIX = "tts_task:"
 
 
-async def save_audio_task(task_id: str, text: str, voice_name: str, rate_str: str, volume: str, redis: redis.Redis):
+async def save_audio_task(
+        task_id: str,
+        text: str,
+        voice_name: str,
+        rate_str: str,
+        volume: str,
+        redis: redis.Redis,
+        bucket_name: str,
+        object_name: str,
+        s3_client: boto3.client
+):
     try:
         # Mark task as in progress
         logger.info(f"开始处理任务 {task_id}")
@@ -72,7 +83,9 @@ async def save_audio_task(task_id: str, text: str, voice_name: str, rate_str: st
         file_path = f"tmp/audio/files/{task_id}.mp3"
         with open(file_path, "wb") as audio_file:
             audio_file.write(audio_data)
-
+            if object_name is None:
+                object_name = f"{task_id}.mp3"
+            s3_client.upload_file(file_path, bucket_name, object_name)
         # Update task status and file path in Redis
         logger.info(f"任务 {task_id} 处理完成")
         redis.hset(f"{TASK_PREFIX}{task_id}", "status", "completed")
@@ -90,7 +103,10 @@ async def create_audio_task(
         voice_name: str = Query("zh-TW-HsiaoYuNeural", description="语音名称"),
         voice_rate: float = Query(1.0, description="语速倍率"),
         voice_volume: str = Query("+0%", description="音量百分比, 范围为-100% ~ +100%"),
-        redis: redis.Redis = Depends(get_redis_client)
+        redis: redis.Redis = Depends(get_redis_client),
+        bucket_name: str = Query(..., description="S3桶名称"),
+        object_name: str = Query(default=None, description="S3对象名称, 默认为 {task_id}.mp3"),
+        s3_client: boto3.client = Depends(get_s3_client)
 ):
     task_id = str(uuid.uuid4())
     rate_str = convert_rate_to_percent(voice_rate)
@@ -99,13 +115,18 @@ async def create_audio_task(
     redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
 
     # Add the TTS task to the background tasks
-    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, redis)
+    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, redis, bucket_name, object_name, s3_client)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
 
 
 @router.get("/audio-task/{task_id}", summary="查询任务结果", description="根据任务ID查询TTS生成任务的状态和音频文件")
-async def get_audio_task_result(task_id: str, redis: redis.Redis = Depends(get_redis_client)):
+async def get_audio_task_result(
+        task_id: str,
+        redis: redis.Redis = Depends(get_redis_client),
+        # 选择模式：1. 直接返回下载链接 2. 直接返回文件流
+        mode: str = Query("url", description="选择模式：url 直接返回下载链接（默认）  stream 直接返回文件流")
+):
     task_data = redis.hgetall(f"{TASK_PREFIX}{task_id}")
 
     if not task_data:
@@ -117,6 +138,10 @@ async def get_audio_task_result(task_id: str, redis: redis.Redis = Depends(get_r
         file_path = task_data.get("file_path", "")
         if not os.path.exists(file_path):
             raise HTTPException(status_code=500, detail="音频文件丢失")
-        return StreamingResponse(open(file_path, "rb"), media_type="audio/mpeg")
+        if mode == "stream":
+            return StreamingResponse(open(file_path, "rb"), media_type="audio/mpeg")
+        # 生成预签名的下载 URL
+        download_url = f"https://amber.7mfitness.com/{task_id}.mp3"
+        return JSONResponse({"task_id": task_id, "status": status, "download_url": download_url})
 
     return JSONResponse({"task_id": task_id, "status": status})
