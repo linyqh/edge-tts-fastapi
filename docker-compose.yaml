@@ -3,110 +3,110 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts01"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.11
   tts02:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts02"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.12
   tts03:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts03"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.13
   tts04:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts04"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.14
   tts05:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts05"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.15
   tts06:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts06"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.16
   tts07:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts07"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.17
   tts08:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts08"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.18
   tts09:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts09"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
       network-tts:
         ipv4_address: 121.213.0.19
   tts10:
-    image: linyq1/edge-tts:0.1.1
+    image: linyq1/edge-tts:0.1.2
     container_name: "tts10"
     restart: always
-    environment:
-      REDIS_HOST: "redis"
+    env_file:
+      - .env
     volumes:
       - ./tmp/:/tts/tmp/
     networks:
