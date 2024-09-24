@@ -4,3 +4,5 @@ uvicorn
 redis>=5.0.8
 requests
 boto>=1.35.5
+docker==7.1.0
+mutagen==1.47.0

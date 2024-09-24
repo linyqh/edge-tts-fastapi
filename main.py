@@ -12,7 +12,8 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # 在应用启动时执行的代码
     redis = get_redis_client()
-    perform_initialization(redis)
+    # 初始化代理池 # TODO: 代理池不稳定，暂时不用代理池
+    # perform_initialization(redis)
     yield
 
 

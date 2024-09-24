@@ -13,6 +13,7 @@ ENV PYTHONPATH="/tts"
 RUN apt-get update && apt-get install -y \
     vim \
     wget \
+    mp3gain \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only the requirements.txt first to leverage Docker cache
