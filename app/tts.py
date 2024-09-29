@@ -73,7 +73,7 @@ async def save_audio_task(
         mp3gain_params: str,
         redis: redis.Redis,
         bucket_name: str,
-        object_name: str,
+        directory_name: str,
         s3_client: boto3.client
 ):
     try:
@@ -106,15 +106,18 @@ async def save_audio_task(
         logger.info("MP3Gain 处理完成")
 
         # 上传到S3
-        if object_name is None:
+        if directory_name is None:
             object_name = f"{task_id}.mp3"
+        else:
+            object_name = f"{directory_name}/{task_id}.mp3"
         s3_client.upload_file(file_path, bucket_name, object_name)
-        logger.info(f"文件 {file_path} 已上传到 R2: {bucket_name} file:{object_name}")
+        logger.info(f"文件 {file_path} 已上传到 S3/R2: {bucket_name} file:{object_name}")
 
         # Update task status in Redis
         logger.info(f"任务 {task_id} 处理完成")
         redis.hset(f"{TASK_PREFIX}{task_id}", "status", "completed")
         redis.hset(f"{TASK_PREFIX}{task_id}", "file_path", file_path)
+        redis.hset(f"{TASK_PREFIX}{task_id}", "object_name", object_name)
 
     except subprocess.CalledProcessError as e:
         logger.error(f"MP3Gain处理失败: {e.stderr}")
@@ -136,7 +139,7 @@ async def create_audio_task(
         mp3gain_params: str = Query("-r -c -d 8", description="MP3Gain参数，默认为'-r -c -d 8'"),
         redis: redis.Redis = Depends(get_redis_client),
         bucket_name: str = Query(..., description="S3桶名称"),
-        object_name: str = Query(default=None, description="S3对象名称, 默认为 {task_id}.mp3"),
+        directory_name: str = Query(default=None, description="S3目录名称, 默认为 / 根目录"),
         s3_client: boto3.client = Depends(get_s3_client)
 ):
     task_id = str(uuid.uuid4())
@@ -146,7 +149,7 @@ async def create_audio_task(
     redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
 
     # Add the TTS task to the background tasks
-    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis, bucket_name, object_name, s3_client)
+    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis, bucket_name, directory_name, s3_client)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
 
@@ -176,7 +179,11 @@ async def get_audio_task_result(
             return StreamingResponse(open(file_path, "rb"), media_type="audio/mpeg")
         
         # 生成预签名的下载 URL
-        download_url = f"https://amber.7mfitness.com/{task_id}.mp3"
+        object_name = task_data.get("object_name", None)
+        if object_name is not None:
+            download_url = f"https://amber.7mfitness.com/{object_name}"
+        else:
+            download_url = f"https://amber.7mfitness.com/{task_id}.mp3"
         return JSONResponse({
             "task_id": task_id, 
             "status": status, 
