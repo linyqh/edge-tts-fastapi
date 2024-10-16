@@ -36,24 +36,24 @@ async def generate_tts_with_duration(text: str, voice_name: str, rate: float, vo
     return audio_data, sub_maker
 
 
-def get_audio_duration(sub_maker: edge_tts.SubMaker):
+def get_audio_duration(sub_maker: edge_tts.SubMaker, weight: float = 1.0):
     if not sub_maker.offset:
         return 0.0
-    return round(sub_maker.offset[-1][1] / 10000000, 8) + 1     # 这个加的1s是tts生成的音频和实际的音频时长差
+    return round(sub_maker.offset[-1][1] / 10000000, 8) + weight     # 这个加的1s是tts生成的音频和实际的音频时长差
 
 
-async def adjust_rate_for_duration(text: str, voice_name: str, volume: str, target_duration: float,
+async def adjust_rate_for_duration(text: str, voice_name: str, volume: str, target_duration: float, weight: float,
                                    max_iterations: int = 5):
     current_rate = 1
     # 迭代法
     for index in range(max_iterations):
         if index == 0:
             audio_data, sub_maker = await generate_tts_with_duration(text, voice_name, 1, volume)
-            current_duration = get_audio_duration(sub_maker)
+            current_duration = get_audio_duration(sub_maker, weight)
             current_rate = round(current_duration / target_duration, 2)
         else:
             audio_data, sub_maker = await generate_tts_with_duration(text, voice_name, current_rate, volume)
-            current_duration = get_audio_duration(sub_maker)
+            current_duration = get_audio_duration(sub_maker, weight)
 
         if current_duration <= target_duration:
             return audio_data, current_rate, current_duration
@@ -71,6 +71,7 @@ async def tts_endpoint(
         voice_rate: float = Query(1.0, description="语速倍率"),
         voice_volume: str = Query("+0%", description="音量百分比, 范围为-100% ~ +100%"),
         max_duration: float = Query(None, description="最大音频时长（秒），精确到秒后两位"),
+        weight: float = Query(1.0, description="权重值"),
         redis: redis.Redis = Depends(get_redis_client)
 ):
     try:
@@ -83,7 +84,7 @@ async def tts_endpoint(
             return StreamingResponse(audio_stream, media_type="audio/mpeg")
         else:
             audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, voice_volume,
-                                                                                     max_duration)
+                                                                                     max_duration, weight)
             logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
             if adjusted_rate < 0.1 or adjusted_rate > 2:
                 raise HTTPException(status_code=400, detail="当前字数超出最大或最小语速速率范围")
@@ -107,6 +108,7 @@ async def save_audio_task(
         redis: redis.Redis,
         bucket_name: str,
         directory_name: str,
+        weight: float,
         s3_client: boto3.client
 ):
     try:
@@ -122,7 +124,7 @@ async def save_audio_task(
         max_duration = redis.hget(f"{TASK_PREFIX}{task_id}", "max_duration")
         if max_duration:
             max_duration = float(max_duration)
-            audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, volume, max_duration)
+            audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, volume, max_duration, weight)
             logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
             if adjusted_rate < 0.1 or adjusted_rate > 2:
                 raise Exception("当前语速超出最大语速速率范围")
@@ -181,6 +183,7 @@ async def create_audio_task(
         redis: redis.Redis = Depends(get_redis_client),
         bucket_name: str = Query(..., description="S3桶名称-7mfitness-test"),
         directory_name: str = Query(default=None, description="S3目录名称, 默认为 / 根目录"),
+        weight: float = Query(1.0, description="权重值"),
         s3_client: boto3.client = Depends(get_s3_client)
 ):
     task_id = str(uuid.uuid4())
@@ -193,7 +196,7 @@ async def create_audio_task(
 
     # Add the TTS task to the background tasks
     background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis,
-                              bucket_name, directory_name, s3_client)
+                              bucket_name, directory_name, s3_client, weight)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
 
