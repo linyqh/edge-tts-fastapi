@@ -4,7 +4,6 @@ from fastapi import APIRouter, Query, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
 from app import logger
 from app.utils import convert_rate_to_percent
-from app.proxy import get_proxy
 from app.dependencies import get_redis_client, get_s3_client
 import os
 import uuid
@@ -12,10 +11,6 @@ import redis
 import boto3
 import edge_tts
 import subprocess
-import docker
-import time
-from docker.errors import NotFound
-import shutil
 from mutagen.mp3 import MP3
 
 router = APIRouter()
@@ -28,37 +23,75 @@ async def generate_tts_stream(text: str, voice_name: str, rate_str: str, volume:
             yield chunk["data"]
 
 
+async def generate_tts_with_duration(text: str, voice_name: str, rate: float, volume: str):
+    rate_str = convert_rate_to_percent(rate)
+    communicate = edge_tts.Communicate(text, voice_name, rate=rate_str, volume=volume)
+    sub_maker = edge_tts.SubMaker()
+    audio_data = b""
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+        elif chunk["type"] == "WordBoundary":
+            sub_maker.create_sub((chunk["offset"], chunk["duration"]), chunk["text"])
+    return audio_data, sub_maker
+
+
+def get_audio_duration(sub_maker: edge_tts.SubMaker):
+    if not sub_maker.offset:
+        return 0.0
+    return round(sub_maker.offset[-1][1] / 10000000, 8) + 1     # 这个加的1s是tts生成的音频和实际的音频时长差
+
+
+async def adjust_rate_for_duration(text: str, voice_name: str, volume: str, target_duration: float,
+                                   max_iterations: int = 5):
+    current_rate = 1
+    # 迭代法
+    for index in range(max_iterations):
+        if index == 0:
+            audio_data, sub_maker = await generate_tts_with_duration(text, voice_name, 1, volume)
+            current_duration = get_audio_duration(sub_maker)
+            current_rate = round(current_duration / target_duration, 2)
+        else:
+            audio_data, sub_maker = await generate_tts_with_duration(text, voice_name, current_rate, volume)
+            current_duration = get_audio_duration(sub_maker)
+
+        if current_duration <= target_duration:
+            return audio_data, current_rate, current_duration
+        else:
+            current_rate += 0.1
+
+    # 如果达到最大迭代次数仍未达到目标，返回最接近的结果
+    raise Exception("当前语速超出最大语速速率范围")
+
+
 @router.get("/tts", summary="语音合成", description="将文本转换为语音，并返回语音流")
 async def tts_endpoint(
         text: str = Query(..., description="要转换的文本"),
         voice_name: str = Query("zh-TW-HsiaoYuNeural", description="语音名称"),
         voice_rate: float = Query(1.0, description="语速倍率"),
         voice_volume: str = Query("+0%", description="音量百分比, 范围为-100% ~ +100%"),
+        max_duration: float = Query(None, description="最大音频时长（秒），精确到秒后两位"),
         redis: redis.Redis = Depends(get_redis_client)
 ):
-    rate_str = convert_rate_to_percent(voice_rate)
+    try:
+        if max_duration is not None:
+            max_duration = round(max_duration, 2)  # 确保最大时长精确到秒后两位
 
-    total_proxies = redis.llen("proxy_pool") + 1  # 包含初始代理和代理池中所有代理
-
-    for attempt in range(total_proxies):
-        try:
+        if max_duration is None:
+            rate_str = convert_rate_to_percent(voice_rate)
             audio_stream = generate_tts_stream(text, voice_name, rate_str, voice_volume)
             return StreamingResponse(audio_stream, media_type="audio/mpeg")
-        except Exception as e:
-            logger.info(f"请求失败，尝试更换代理: {e}")
-            current_proxy = get_proxy(redis)
-            if current_proxy:
-                os.environ["http_proxy"] = current_proxy
-                os.environ["https_proxy"] = current_proxy
-                logger.info(f"已更换代理: {current_proxy}")
-            else:
-                os.environ["http_proxy"] = ""
-                os.environ["https_proxy"] = ""
-                logger.info("代理已置空，无法再更换")
-                break
+        else:
+            audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, voice_volume,
+                                                                                     max_duration)
+            logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
+            if adjusted_rate < 0.1 or adjusted_rate > 2:
+                raise HTTPException(status_code=400, detail="当前字数超出最大或最小语速速率范围")
 
-    raise HTTPException(status_code=503, detail="无法处理请求，代理池已耗尽")
-
+            return StreamingResponse(iter([audio_data]), media_type="audio/mpeg")
+    except:
+        logger.error(traceback.format_exc())
+        return HTTPException(status_code=400, detail="当前字数超出最大或最小语速速率范围")
 
 # 任务相关数据的 Redis 键前缀
 TASK_PREFIX = "tts_task:"
@@ -79,17 +112,26 @@ async def save_audio_task(
     try:
         # Mark task as in progress
         logger.info(f"开始处理任务 {task_id}")
-        redis.hset(f"{TASK_PREFIX}{task_id}", "status", "in_progress")
+        redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
 
         # 使用相对路径
         audio_files_dir = "tmp/audio/files"
         os.makedirs(audio_files_dir, exist_ok=True)
 
-        # Generate TTS stream and save to a file
-        audio_data = b""
-        async for chunk in generate_tts_stream(text, voice_name, rate_str, volume):
-            audio_data += chunk
-        
+        # 检查是否有最大时长限制
+        max_duration = redis.hget(f"{TASK_PREFIX}{task_id}", "max_duration")
+        if max_duration:
+            max_duration = float(max_duration)
+            audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, volume, max_duration)
+            logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
+            if adjusted_rate < 0.1 or adjusted_rate > 2:
+                raise Exception("当前语速超出最大语速速率范围")
+        else:
+            # 生成无持续时间限制的 TTS 流
+            audio_data = b""
+            async for chunk in generate_tts_stream(text, voice_name, rate_str, volume):
+                audio_data += chunk
+
         file_path = os.path.join(audio_files_dir, f"{task_id}.mp3")
         with open(file_path, "wb") as audio_file:
             audio_file.write(audio_data)
@@ -98,7 +140,7 @@ async def save_audio_task(
         logger.info(f"开始处理音频文件 {file_path}")
         command = f"mp3gain {mp3gain_params} {file_path}"
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
-        
+
         if result.returncode != 0:
             logger.error(f"MP3Gain 处理失败: {result.stderr}")
             raise Exception("MP3Gain 处理失败")
@@ -126,8 +168,6 @@ async def save_audio_task(
         logger.error(f"任务 {task_id} 处理失败: {traceback.format_exc()}")
         redis.hset(f"{TASK_PREFIX}{task_id}", "status", "failed")
 
-# 其他函数保持不变
-
 
 @router.post("/create-audio-task", summary="创建音频任务", description="创建TTS音频生成任务并返回任务ID")
 async def create_audio_task(
@@ -137,8 +177,9 @@ async def create_audio_task(
         voice_rate: float = Query(1.0, description="语速倍率"),
         voice_volume: str = Query("+0%", description="音量百分比, 范围为-100% ~ +100%"),
         mp3gain_params: str = Query("-r -c -d 8", description="MP3Gain参数，默认为'-r -c -d 8'"),
+        max_duration: float = Query(None, description="最大音频时长（秒），精确到秒后两位"),
         redis: redis.Redis = Depends(get_redis_client),
-        bucket_name: str = Query(..., description="S3桶名称"),
+        bucket_name: str = Query(..., description="S3桶名称-7mfitness-test"),
         directory_name: str = Query(default=None, description="S3目录名称, 默认为 / 根目录"),
         s3_client: boto3.client = Depends(get_s3_client)
 ):
@@ -147,11 +188,15 @@ async def create_audio_task(
 
     # Store initial task information in Redis
     redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
+    if max_duration is not None:
+        redis.hset(f"{TASK_PREFIX}{task_id}", "max_duration", str(round(max_duration, 2)))
 
     # Add the TTS task to the background tasks
-    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis, bucket_name, directory_name, s3_client)
+    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis,
+                              bucket_name, directory_name, s3_client)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
+
 
 @router.get("/audio-task/{task_id}", summary="查询任务结果", description="根据任务ID查询TTS生成任务的状态和音频文件")
 async def get_audio_task_result(
@@ -170,14 +215,14 @@ async def get_audio_task_result(
         file_path = task_data.get("file_path", "")
         if not os.path.exists(file_path):
             raise HTTPException(status_code=500, detail="音频文件丢失")
-        
+
         # 获取音频时长
         audio = MP3(file_path)
         duration = round(audio.info.length, 2)  # 四舍五入到小数点后两位
-        
+
         if mode == "stream":
             return StreamingResponse(open(file_path, "rb"), media_type="audio/mpeg")
-        
+
         # 生成预签名的下载 URL
         object_name = task_data.get("object_name", None)
         if object_name is not None:
@@ -185,8 +230,8 @@ async def get_audio_task_result(
         else:
             download_url = f"https://amber.7mfitness.com/{task_id}.mp3"
         return JSONResponse({
-            "task_id": task_id, 
-            "status": status, 
+            "task_id": task_id,
+            "status": status,
             "download_url": download_url,
             "duration": duration  # 新增音频时长字段，单位为秒
         })
