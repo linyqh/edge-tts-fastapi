@@ -196,7 +196,7 @@ async def create_audio_task(
 
     # Add the TTS task to the background tasks
     background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis,
-                              bucket_name, directory_name, s3_client, weight)
+                              bucket_name, directory_name, weight, s3_client)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
 
