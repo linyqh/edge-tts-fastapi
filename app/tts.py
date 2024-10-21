@@ -60,7 +60,7 @@ async def adjust_rate_for_duration(text: str, voice_name: str, volume: str, targ
         else:
             current_rate += 0.1
 
-    # 如果达到最大迭代次数仍未达到目标，返回最接近的结果
+    # 如果达到最大迭代次数仍未达到标，返回最接近的结果
     raise Exception("当前语速超出最大语速速率范围")
 
 
@@ -85,7 +85,7 @@ async def tts_endpoint(
         else:
             audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, voice_volume,
                                                                                      max_duration, weight)
-            logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
+            logger.info(f"调整的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
             if adjusted_rate < 0.1 or adjusted_rate > 2:
                 raise HTTPException(status_code=400, detail="当前字数超出最大或最小语速速率范围")
 
@@ -126,6 +126,7 @@ async def save_audio_task(
             max_duration = float(max_duration)
             audio_data, adjusted_rate, tts_duration = await adjust_rate_for_duration(text, voice_name, volume, max_duration, weight)
             logger.info(f"调整后的语速为 {adjusted_rate}, TTS 音频时长为 {tts_duration}")
+            redis.hset(f"{TASK_PREFIX}{task_id}", "voice_rate", str(adjusted_rate))
             if adjusted_rate < 0.1 or adjusted_rate > 2:
                 raise Exception("当前语速超出最大语速速率范围")
         else:
@@ -144,10 +145,13 @@ async def save_audio_task(
         result = subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
 
         if result.returncode != 0:
-            logger.error(f"MP3Gain 处理失败: {result.stderr}")
-            raise Exception("MP3Gain 处理失败")
+            error_message = f"MP3Gain处理失败: {result.stderr}"
+            logger.error(error_message)
+            redis.hset(f"{TASK_PREFIX}{task_id}", "status", "failed")
+            redis.hset(f"{TASK_PREFIX}{task_id}", "message", error_message)
+            raise Exception("MP3Gain处理失败")
 
-        logger.info("MP3Gain 处理完成")
+        logger.info("MP3Gain处理完成")
 
         # 上传到S3
         if directory_name is None:
@@ -164,11 +168,16 @@ async def save_audio_task(
         redis.hset(f"{TASK_PREFIX}{task_id}", "object_name", object_name)
 
     except subprocess.CalledProcessError as e:
-        logger.error(f"MP3Gain处理失败: {e.stderr}")
+        error_message = f"MP3Gain处理失败: {e.stderr}"
+        logger.error(error_message)
+        redis.hset(f"{TASK_PREFIX}{task_id}", "status", "failed")
+        redis.hset(f"{TASK_PREFIX}{task_id}", "message", error_message)
         raise Exception("MP3Gain处理失败")
     except Exception as e:
-        logger.error(f"任务 {task_id} 处理失败: {traceback.format_exc()}")
+        error_message = f"任务 {task_id} 处理失败: {e}"
+        logger.error(traceback.format_exc())
         redis.hset(f"{TASK_PREFIX}{task_id}", "status", "failed")
+        redis.hset(f"{TASK_PREFIX}{task_id}", "message", error_message)
 
 
 @router.post("/create-audio-task", summary="创建音频任务", description="创建TTS音频生成任务并返回任务ID")
@@ -181,7 +190,7 @@ async def create_audio_task(
         mp3gain_params: str = Query("-r -c -d 8", description="MP3Gain参数，默认为'-r -c -d 8'"),
         max_duration: float = Query(None, description="最大音频时长（秒），精确到秒后两位"),
         redis: redis.Redis = Depends(get_redis_client),
-        bucket_name: str = Query(..., description="S3桶名称-7mfitness-test"),
+        bucket_name: str = Query(..., description="S3桶名称 7mfitness-test"),
         directory_name: str = Query(default=None, description="S3目录名称, 默认为 / 根目录"),
         weight: float = Query(1.0, description="权重值"),
         s3_client: boto3.client = Depends(get_s3_client)
@@ -191,6 +200,8 @@ async def create_audio_task(
 
     # Store initial task information in Redis
     redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
+    redis.hset(f"{TASK_PREFIX}{task_id}", "voice_rate", "")
+    redis.hset(f"{TASK_PREFIX}{task_id}", "message", "")  # 保存 message
     if max_duration is not None:
         redis.hset(f"{TASK_PREFIX}{task_id}", "max_duration", str(round(max_duration, 2)))
 
@@ -213,6 +224,8 @@ async def get_audio_task_result(
         raise HTTPException(status_code=404, detail="任务未找到")
 
     status = task_data.get("status", "未知状态")
+    voice_rate = task_data.get("voice_rate", "未知语速")
+    message = task_data.get("message", "")  # 获取任务的错误信息（如果有）
 
     if status == "completed":
         file_path = task_data.get("file_path", "")
@@ -236,7 +249,14 @@ async def get_audio_task_result(
             "task_id": task_id,
             "status": status,
             "download_url": download_url,
-            "duration": duration  # 新增音频时长字段，单位为秒
+            "duration": duration,
+            "voice_rate": voice_rate,
+            "message": message  # 返回错误信息（如果有）
         })
 
-    return JSONResponse({"task_id": task_id, "status": status})
+    return JSONResponse({
+        "task_id": task_id,
+        "status": status,
+        "voice_rate": voice_rate,
+        "message": message  # 返回错误信息（如果有）
+    })

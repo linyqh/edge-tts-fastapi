@@ -1,5 +1,5 @@
 fastapi
-edge_tts==6.1.12
+edge_tts==6.1.14
 uvicorn
 redis>=5.0.8
 requests
