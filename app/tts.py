@@ -241,10 +241,13 @@ async def get_audio_task_result(
 
         # 生成预签名的下载 URL
         object_name = task_data.get("object_name", None)
+        r2_base_url = os.getenv("R2_BASE_URL")
+        if r2_base_url is None:
+            raise HTTPException(status_code=500, detail="R2_BASE_URL 未设置")
         if object_name is not None:
-            download_url = f"https://amber.7mfitness.com/{object_name}"
+            download_url = f"{r2_base_url}/{object_name}"
         else:
-            download_url = f"https://amber.7mfitness.com/{task_id}.mp3"
+            download_url = f"{r2_base_url}/{task_id}.mp3"
         return JSONResponse({
             "task_id": task_id,
             "status": status,
