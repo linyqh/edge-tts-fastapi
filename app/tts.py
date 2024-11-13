@@ -12,6 +12,9 @@ import boto3
 import edge_tts
 import subprocess
 from mutagen.mp3 import MP3
+from dotenv import load_dotenv
+
+load_dotenv()
 
 router = APIRouter()
 
@@ -197,6 +200,7 @@ async def create_audio_task(
 ):
     task_id = str(uuid.uuid4())
     rate_str = convert_rate_to_percent(voice_rate)
+    directory_name = directory_name if directory_name is None else directory_name.strip("/")
 
     # Store initial task information in Redis
     redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
@@ -240,18 +244,21 @@ async def get_audio_task_result(
             return StreamingResponse(open(file_path, "rb"), media_type="audio/mpeg")
 
         # 生成预签名的下载 URL
-        object_name = task_data.get("object_name", None)
-        r2_base_url = os.getenv("R2_BASE_URL")
+        object_name = task_data.get("object_name", "").strip("/")
+        r2_base_url = os.getenv("R2_BASE_URL", "").strip("/")
+        logger.info(f"R2_BASE_URL: {r2_base_url}")
+        logger.info(f"object_name: {object_name}")
         if r2_base_url is None:
             raise HTTPException(status_code=500, detail="R2_BASE_URL 未设置")
-        if object_name is not None:
-            download_url = f"{r2_base_url}/{object_name}"
-        else:
-            download_url = f"{r2_base_url}/{task_id}.mp3"
+        if object_name is None:
+            raise HTTPException(status_code=500, detail="object_name 不存在")
+        download_url = f"{r2_base_url}/{object_name}"
+        r2_path = f"{object_name}"
         return JSONResponse({
             "task_id": task_id,
             "status": status,
-            "download_url": download_url,
+            "download_url": r2_path,
+            "complete_download_url": download_url,
             "duration": duration,
             "voice_rate": voice_rate,
             "message": message  # 返回错误信息（如果有）
