@@ -144,20 +144,6 @@ services:
       network-tts:
         ipv4_address: 121.213.0.30
 
-#  proxy_pool:
-#    image: linyq1/proxy_pool:0.0.1
-#    container_name: proxy_pool
-#    ports:
-#      - "5010:5010"
-#    links:
-#      - redis
-#    restart: always
-#    environment:
-#      DB_CONN: "redis://@redis:6379/0"
-#    networks:
-#      network-tts:
-#        ipv4_address: 121.213.0.31
-
   redis:
     image: redis:6-alpine
     container_name: redis
