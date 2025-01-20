@@ -1,7 +1,7 @@
 import traceback
 import aiofiles
 import asyncio
-from fastapi import APIRouter, Query, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, Query, HTTPException, Depends, BackgroundTasks, Body
 from fastapi.responses import StreamingResponse, JSONResponse
 from app import logger
 from app.utils import convert_rate_to_percent
@@ -13,6 +13,8 @@ import aioboto3
 import edge_tts
 from mutagen.mp3 import MP3
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+from typing import Optional
 
 load_dotenv()
 
@@ -35,7 +37,7 @@ async def generate_tts_with_duration(text: str, voice_name: str, rate: float, vo
         if chunk["type"] == "audio":
             audio_data += chunk["data"]
         elif chunk["type"] == "WordBoundary":
-            sub_maker.create_sub((chunk["offset"], chunk["duration"]), chunk["text"])
+            sub_maker.feed(chunk)
     return audio_data, sub_maker
 
 
@@ -46,12 +48,12 @@ def get_audio_duration(sub_maker: edge_tts.SubMaker, weight: float = 1.0):
     :param weight: 时长权重
     :return: 音频时长（秒）
     """
-    if not sub_maker.subs:
+    if not sub_maker.cues:
         return 0.0
     
     # 获取最后一个字幕的结束时间
-    last_sub = sub_maker.subs[-1]
-    duration = last_sub.end / 10000000  # 转换为秒
+    last_sub = sub_maker.cues[-1]
+    duration = last_sub.end.total_seconds()  # 直接获取秒数
     return round(duration * weight, 2)
 
 
@@ -245,6 +247,79 @@ async def tts_endpoint(
 
 # 任务相关数据的 Redis 键前缀
 TASK_PREFIX = "tts_task:"
+
+
+class AudioTaskRequest(BaseModel):
+    text: str = Field(..., description="要转换的文本", example="你好，这是一段测试文本。")
+    voice_name: str = Field(default="zh-CN-XiaoxiaoNeural", description="语音名称", 
+                          example="zh-CN-XiaoxiaoNeural")
+    voice_rate: float = Field(default=1.0, description="语速倍率", example=1.0, ge=0.1, le=2.0)
+    voice_volume: str = Field(default="+0%", description="音量百分比, 范围为-100% ~ +100%", 
+                            example="+0%")
+    mp3gain_params: str = Field(default="-r -c -d 8", description="MP3Gain参数", 
+                              example="-r -c -d 8")
+    max_duration: Optional[float] = Field(default=None, description="最大音频时长（秒），精确到秒后两位", 
+                                        example=10.5)
+    bucket_name: str = Field(..., description="S3桶名称", example="my-bucket")
+    directory_name: Optional[str] = Field(default=None, description="S3目录名称, 默认为 / 根目录", 
+                                        example="audio/tts")
+    weight: float = Field(default=1.0, description="权重值", example=1.0, ge=0.1, le=2.0)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "你好，这是一段测试文本。",
+                "voice_name": "zh-CN-XiaoxiaoNeural",
+                "voice_rate": 1.0,
+                "voice_volume": "+0%",
+                "mp3gain_params": "-r -c -d 8",
+                "max_duration": 10.5,
+                "bucket_name": "7mfitness-test",
+                "directory_name": "audio/test",
+                "weight": 1.0
+            }
+        }
+
+
+@router.post("/v2/create-audio-task", summary="创建音频任务", description="创建TTS音频生成任务并返回任务ID")
+async def create_audio_task_v2(
+    background_tasks: BackgroundTasks,
+    request: AudioTaskRequest,
+    redis: aioredis.Redis = Depends(get_redis_client),
+    s3_client_ctx=Depends(get_s3_client_ctx)
+):
+    task_id = str(uuid.uuid4())
+    rate_str = convert_rate_to_percent(request.voice_rate)
+    directory_name = request.directory_name if request.directory_name is None else request.directory_name.strip("/")
+
+    # Store initial task information in Redis
+    await redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
+    await redis.hset(f"{TASK_PREFIX}{task_id}", "voice_rate", "")
+    await redis.hset(f"{TASK_PREFIX}{task_id}", "message", "")
+    await redis.hset(f"{TASK_PREFIX}{task_id}", "bucket_name", request.bucket_name)
+    if request.max_duration is not None:
+        await redis.hset(f"{TASK_PREFIX}{task_id}", "max_duration", str(round(request.max_duration, 2)))
+
+    # Add the TTS task to the background tasks
+    background_tasks.add_task(
+        save_audio_task,
+        task_id,
+        request.text,
+        request.voice_name,
+        rate_str,
+        request.voice_volume,
+        request.mp3gain_params,
+        redis,
+        request.bucket_name,
+        directory_name,
+        request.weight,
+        s3_client_ctx
+    )
+
+    return JSONResponse({
+        "task_id": task_id,
+        "status": "Task created successfully"
+    })
 
 
 @router.post("/create-audio-task", summary="创建音频任务", description="创建TTS音频生成任务并返回任务ID")
