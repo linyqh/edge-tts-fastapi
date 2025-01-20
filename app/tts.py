@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 async def generate_tts_stream(text: str, voice_name: str, rate_str: str, volume: str):
-    communicate = edge_tts.Communicate(text, voice_name, rate=rate_str, volume=volume)
+    communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=rate_str, volume=volume)
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             yield chunk["data"]
@@ -28,7 +28,7 @@ async def generate_tts_stream(text: str, voice_name: str, rate_str: str, volume:
 
 async def generate_tts_with_duration(text: str, voice_name: str, rate: float, volume: str):
     rate_str = convert_rate_to_percent(rate)
-    communicate = edge_tts.Communicate(text, voice_name, rate=rate_str, volume=volume)
+    communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=rate_str, volume=volume)
     sub_maker = edge_tts.SubMaker()
     audio_data = b""
     async for chunk in communicate.stream():
@@ -148,18 +148,18 @@ async def save_audio_task(
             await redis.hset(f"{TASK_PREFIX}{task_id}", "duration", str(tts_duration))
             if adjusted_rate < 0.1 or adjusted_rate > 2:
                 raise Exception(f"无法调整语速到合适的范围内。当前语速为 {adjusted_rate}")
-        else:
-            communicate = edge_tts.Communicate(text, voice_name, rate=voice_rate, volume=voice_volume)
-            sub_maker = edge_tts.SubMaker()
-            async with aiofiles.open(file_path, "wb") as file:
-                async for chunk in communicate.stream():
-                    if chunk["type"] == "audio":
-                        await file.write(chunk["data"])
-                    elif chunk["type"] == "WordBoundary":
-                        sub_maker.process_bound(chunk)
             
-            # 计算音频时长
-            duration = get_audio_duration(sub_maker, weight)
+            # 将音频数据写入文件
+            async with aiofiles.open(file_path, "wb") as file:
+                await file.write(audio_data)
+        else:
+            # 使用新的 API 直接生成音频文件
+            communicate = edge_tts.Communicate(text=text, voice=voice_name, rate=voice_rate, volume=voice_volume)
+            await communicate.save(file_path)
+            
+            # 使用 mutagen 获取音频时长
+            audio = MP3(file_path)
+            duration = round(audio.info.length * weight, 2)
             await redis.hset(f"{TASK_PREFIX}{task_id}", "duration", str(duration))
 
         # 使用异步MP3Gain处理音频文件
