@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 python-dotenv
-edge-tts==6.1.19
+edge-tts==7.0.0
 redis[hiredis]>=5.0.1
 aiofiles>=23.2.1
 aioboto3==12.3.0
