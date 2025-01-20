@@ -3,7 +3,6 @@ import aiofiles
 import asyncio
 from fastapi import APIRouter, Query, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse
-from pydantic import BaseModel, Field
 from app import logger
 from app.utils import convert_rate_to_percent
 from app.dependencies import get_redis_client, get_s3_client_ctx, get_sync_redis_client
@@ -248,55 +247,36 @@ async def tts_endpoint(
 TASK_PREFIX = "tts_task:"
 
 
-class CreateAudioTaskRequest(BaseModel):
-    text: str = Field(..., description="要转换的文本")
-    voice_name: str = Field("zh-TW-HsiaoYuNeural", description="语音名称")
-    voice_rate: float = Field(1.0, description="语速倍率")
-    voice_volume: str = Field("+0%", description="音量百分比, 范围为-100% ~ +100%")
-    mp3gain_params: str = Field("-r -c -d 8", description="MP3Gain参数，默认为'-r -c -d 8'")
-    max_duration: float | None = Field(None, description="最大音频时长（秒），精确到秒后两位")
-    bucket_name: str = Field(..., description="S3桶名称测试：7mfitness-test")
-    directory_name: str | None = Field(None, description="S3目录名称, 默认为 / 根目录")
-    weight: float = Field(1.0, description="权重值")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "text": "这是一个测试文本",
-                "voice_name": "zh-TW-HsiaoYuNeural",
-                "voice_rate": 1.0,
-                "voice_volume": "+0%",
-                "mp3gain_params": "-r -c -d 8",
-                "max_duration": 10.0,
-                "bucket_name": "7mfitness-test",
-                "directory_name": "test",
-                "weight": 1.0
-            }
-        }
-
-
 @router.post("/create-audio-task", summary="创建音频任务", description="创建TTS音频生成任务并返回任务ID")
 async def create_audio_task(
         background_tasks: BackgroundTasks,
-        request: CreateAudioTaskRequest,
+        text: str = Query(..., description="要转换的文本"),
+        voice_name: str = Query("zh-TW-HsiaoYuNeural", description="语音名称"),
+        voice_rate: float = Query(1.0, description="语速倍率"),
+        voice_volume: str = Query("+0%", description="音量百分比, 范围为-100% ~ +100%"),
+        mp3gain_params: str = Query("-r -c -d 8", description="MP3Gain参数，默认为'-r -c -d 8'"),
+        max_duration: float = Query(None, description="最大音频时长（秒），精确到秒后两位"),
         redis: aioredis.Redis = Depends(get_redis_client),
+        bucket_name: str = Query(..., description="S3桶名称测试：7mfitness-test"),
+        directory_name: str = Query(default=None, description="S3目录名称, 默认为 / 根目录"),
+        weight: float = Query(1.0, description="权重值"),
         s3_client_ctx=Depends(get_s3_client_ctx)
 ):
     task_id = str(uuid.uuid4())
-    rate_str = convert_rate_to_percent(request.voice_rate)
-    directory_name = request.directory_name if request.directory_name is None else request.directory_name.strip("/")
+    rate_str = convert_rate_to_percent(voice_rate)
+    directory_name = directory_name if directory_name is None else directory_name.strip("/")
 
     # Store initial task information in Redis
     await redis.hset(f"{TASK_PREFIX}{task_id}", "status", "pending")
     await redis.hset(f"{TASK_PREFIX}{task_id}", "voice_rate", "")
     await redis.hset(f"{TASK_PREFIX}{task_id}", "message", "")
-    await redis.hset(f"{TASK_PREFIX}{task_id}", "bucket_name", request.bucket_name)
-    if request.max_duration is not None:
-        await redis.hset(f"{TASK_PREFIX}{task_id}", "max_duration", str(round(request.max_duration, 2)))
+    await redis.hset(f"{TASK_PREFIX}{task_id}", "bucket_name", bucket_name)
+    if max_duration is not None:
+        await redis.hset(f"{TASK_PREFIX}{task_id}", "max_duration", str(round(max_duration, 2)))
 
     # Add the TTS task to the background tasks
-    background_tasks.add_task(save_audio_task, task_id, request.text, request.voice_name, rate_str, request.voice_volume, 
-                            request.mp3gain_params, redis, request.bucket_name, directory_name, request.weight, s3_client_ctx)
+    background_tasks.add_task(save_audio_task, task_id, text, voice_name, rate_str, voice_volume, mp3gain_params, redis,
+                              bucket_name, directory_name, weight, s3_client_ctx)
 
     return JSONResponse({"task_id": task_id, "status": "Task created successfully"})
 
